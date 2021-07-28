@@ -183,6 +183,66 @@ async function main() {
     }
   });
 
+  app.post("/cart", async (req, res, next) => {
+    console.log("a");
+    const user = authenticateToken(req, res, next);
+    const existingCart = await client.query(
+      `SELECT * FROM carts WHERE user_id=${user.user_id}`
+    );
+    if (existingCart.rows.length > 0) {
+      const existingCartId = (
+        await client.query(`SELECT * FROM carts WHERE user_id=${user.user_id}`)
+      ).rows[0].cart_id;
+      await client.query(
+        `INSERT INTO cart_items (cart_id, product_id, variant, quantity) VALUES (${existingCartId}, ${req.body.productId}, '${req.body.variant}', ${req.body.quantity})`
+      );
+      res.json({
+        success: true,
+        message: `user ${user.user_id} already has cart ${existingCartId}`,
+        cartId: existingCartId,
+      });
+    } else {
+      const newCartId = (
+        await client.query(
+          `INSERT INTO carts (user_id) VALUES (${user.user_id}) RETURNING cart_id`
+        )
+      ).rows[0].cart_id;
+      await client.query(
+        `INSERT INTO cart_items (${newCartId}, ${req.body.productId}, '${req.body.variant}', ${req.body.quantity})`
+      );
+      res.json({
+        success: true,
+        message: `cart ${newCartId} created for user with id ${user.user_id}`,
+        cartId: newCartId,
+      });
+    }
+  });
+
+  app.get("/cart", async (req, res, next) => {
+    const user = authenticateToken(req, res, next);
+    const existingCart = await client.query(
+      `SELECT * FROM carts WHERE user_id=${user.user_id}`
+    );
+    if (existingCart.rows.length > 0) {
+      const cartItems = (
+        await client.query(
+          `SELECT * FROM cart_items WHERE cart_id=${existingCart.rows[0].cart_id};`
+        )
+      ).rows;
+      res.json({
+        success: true,
+        message: "cart found",
+        cartInfo: existingCart.rows[0],
+        cartItems,
+      });
+    } else {
+      res.json({
+        success: false,
+        message: "user does not have an existing cart",
+      });
+    }
+  });
+
   app.listen(port, () => {
     console.log(`👂 on port ${port}`);
   });
