@@ -136,7 +136,49 @@ async function main() {
       res.json({
         success: false,
         message:
-          "you need an account with administrator access to add items to the product list",
+          "you need an account with administrator priveleges to access this resource",
+      });
+    }
+  });
+
+  app.get("/users", async (req, res, next) => {
+    const user = authenticateToken(req, res, next);
+    const userAdmin = await client.query(
+      `SELECT * FROM users WHERE user_id=${user.user_id}`
+    );
+    if (userAdmin.rows[0].is_admin === true) {
+      const users = await client.query(
+        `SELECT user_id, email, is_admin FROM users;`
+      );
+      res.status(201);
+      res.json(users.rows);
+    } else {
+      res.status(401);
+      res.json({
+        success: false,
+        message:
+          "you need an account with administrator priveleges to access this resource",
+      });
+    }
+  });
+
+  app.get("/users/:id", async (req, res, next) => {
+    const user = authenticateToken(req, res, next);
+    const userAdmin = await client.query(
+      `SELECT * FROM users WHERE user_id=${user.user_id}`
+    );
+    if (userAdmin.rows[0].is_admin === true) {
+      const users = await client.query(
+        `SELECT user_id, email, is_admin FROM users WHERE user_id=${req.params.id};`
+      );
+      res.status(201);
+      res.json(users.rows);
+    } else {
+      res.status(401);
+      res.json({
+        success: false,
+        message:
+          "you need an account with administrator priveleges to access this resource",
       });
     }
   });
