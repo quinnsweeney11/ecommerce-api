@@ -253,11 +253,26 @@ async function main() {
     if (existingCart.length > 0) {
       const paymentSuccess = await paymentHandler();
       if (paymentSuccess) {
+        const transactionItems = (
+          await client.query(
+            `SELECT * FROM cart_items WHERE cart_id=${req.params.id}`
+          )
+        ).rows;
+        console.log(transactionItems);
         const transactionId = (
           await client.query(
             `INSERT INTO transactions (user_id) VALUES (${user.user_id}) RETURNING transaction_id`
           )
         ).rows[0];
+        console.log(transactionId);
+        transactionItems.forEach(async (item) => {
+          console.log(
+            `INSERT INTO transaction_items (transaction_id, product_id, variant, quantity) VALUES (${transactionId.transaction_id}, ${item.product_id}, '${item.variant}', ${item.quantity})`
+          );
+          await client.query(
+            `INSERT INTO transaction_items (transaction_id, product_id, variant, quantity) VALUES (${transactionId.transaction_id}, ${item.product_id}, '${item.variant}', ${item.quantity})`
+          );
+        });
         await client.query(`DELETE FROM carts WHERE cart_id=${req.params.id}`);
         await client.query(
           `DELETE FROM cart_items WHERE cart_id=${req.params.id}`
