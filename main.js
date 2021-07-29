@@ -291,6 +291,105 @@ async function main() {
     }
   });
 
+  app.get("/transactions", async (req, res, next) => {
+    const user = authenticateToken(req, res, next);
+    const userAdmin = await client.query(
+      `SELECT * FROM users WHERE user_id=${user.user_id}`
+    );
+    if (userAdmin.rows[0].is_admin === true) {
+      //show ALL orderes
+      const transactions = (await client.query(`SELECT * FROM transactions`))
+        .rows;
+      const transactionItems = (
+        await client.query(`SELECT * FROM transaction_items`)
+      ).rows;
+      const output = {};
+      transactions.forEach((transaction) => {
+        const result = {
+          items: transactionItems.filter(
+            (e) => e.transaction_id === transaction.transaction_id
+          ),
+          timestamp: transaction.date,
+          userId: transaction.user_id,
+        };
+        output[transaction.transaction_id] = { ...result };
+      });
+      res.json({
+        success: true,
+        message: "found transactions 😎",
+        transactions: output,
+      });
+    } else {
+      res.json({
+        success: false,
+        message:
+          "you do not have permission to view this endpoint. please request /mytransactions to view user specific transaction history",
+      });
+    }
+  });
+
+  app.get("/mytransactions", async (req, res, next) => {
+    const user = authenticateToken(req, res, next);
+    const transactions = (
+      await client.query(
+        `SELECT * FROM transactions WHERE user_id=${user.user_id}`
+      )
+    ).rows;
+    const transactionItems = (
+      await client.query(`SELECT * FROM transaction_items`)
+    ).rows;
+    const output = {};
+    transactions.forEach((transaction) => {
+      const result = {
+        items: transactionItems.filter(
+          (e) => e.transaction_id === transaction.transaction_id
+        ),
+        timestamp: transaction.date,
+        userId: transaction.user_id,
+      };
+      output[transaction.transaction_id] = { ...result };
+    });
+    res.json({
+      success: true,
+      message: "found transactions 😎",
+      transactions: output,
+    });
+  });
+
+  app.get("/transactions/:id", async (req, res, next) => {
+    const user = authenticateToken(req, res, next);
+    const userAdmin = await client.query(
+      `SELECT * FROM users WHERE user_id=${user.user_id}`
+    );
+    if (userAdmin.rows[0].is_admin === true) {
+      const transaction = (
+        await client.query(
+          `SELECT * FROM transactions WHERE transaction_id=${req.params.id}`
+        )
+      ).rows[0];
+      const transactionItems = (
+        await client.query(
+          `SELECT * FROM transaction_items WHERE transaction_id=${req.params.id}`
+        )
+      ).rows[0];
+      if (transaction !== undefined) {
+        const output = {};
+        const result = {
+          items: transactionItems,
+          timestamp: transaction.date,
+          userId: transaction.user_id,
+        };
+        output[transaction.transaction_id] = { ...result };
+
+        res.json({
+          success: true,
+          message: "found transaction 😎",
+          transaction: output,
+        });
+      }
+    }
+  });
+
   app.listen(port, () => {
     console.log(`👂 on port ${port}`);
   });
