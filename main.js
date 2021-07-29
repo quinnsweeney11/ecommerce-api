@@ -1,3 +1,4 @@
+const paymentHandler = require("./payment");
 require("dotenv").config();
 const express = require("express");
 const bcrypt = require("bcrypt");
@@ -184,7 +185,6 @@ async function main() {
   });
 
   app.post("/cart", async (req, res, next) => {
-    console.log("a");
     const user = authenticateToken(req, res, next);
     const existingCart = await client.query(
       `SELECT * FROM carts WHERE user_id=${user.user_id}`
@@ -208,7 +208,7 @@ async function main() {
         )
       ).rows[0].cart_id;
       await client.query(
-        `INSERT INTO cart_items (${newCartId}, ${req.body.productId}, '${req.body.variant}', ${req.body.quantity})`
+        `INSERT INTO cart_items (cart_id, product_id, variant, quantity) VALUES (${newCartId}, ${req.body.productId}, '${req.body.variant}', ${req.body.quantity})`
       );
       res.json({
         success: true,
@@ -239,6 +239,39 @@ async function main() {
       res.json({
         success: false,
         message: "user does not have an existing cart",
+      });
+    }
+  });
+
+  app.post("/checkout/:id", async (req, res, next) => {
+    const user = authenticateToken(req, res, next);
+    const existingCart = (
+      await client.query(
+        `SELECT * FROM carts WHERE user_id=${user.user_id} AND cart_id=${req.params.id}`
+      )
+    ).rows;
+    if (existingCart.length > 0) {
+      const paymentSuccess = await paymentHandler();
+      if (paymentSuccess) {
+        const transactionId = (
+          await client.query(
+            `INSERT INTO transactions (user_id) VALUES (${user.user_id}) RETURNING transaction_id`
+          )
+        ).rows[0];
+        await client.query(`DELETE FROM carts WHERE cart_id=${req.params.id}`);
+        await client.query(
+          `DELETE FROM cart_items WHERE cart_id=${req.params.id}`
+        );
+        res.json({
+          success: true,
+          message: "payment and checkout success",
+          transactionId: transactionId.transactionId,
+        });
+      }
+    } else {
+      res.json({
+        success: false,
+        message: "no active cart",
       });
     }
   });
