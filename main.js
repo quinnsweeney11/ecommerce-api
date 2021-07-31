@@ -35,7 +35,12 @@ async function main() {
           database: process.env.PGDATABASE,
           port: process.env.PGPORT,
         })
-      : new Client(process.env.DATABASE_URL);
+      : new Client({
+          connectionString: process.env.DATABASE_URL,
+          ssl: {
+            rejectUnauthorized: false,
+          },
+        });
   await client.connect().then(() => console.log("connected to database"));
   app.use(express.json());
   app.use(
