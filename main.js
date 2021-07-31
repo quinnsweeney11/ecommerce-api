@@ -27,12 +27,15 @@ function authenticateToken(req, res, next) {
 }
 
 async function main() {
-  const client = new Client({
-    user: process.env.PGUSER,
-    host: process.env.PGHOST,
-    database: process.env.PGDATABASE,
-    port: process.env.PGPORT,
-  });
+  const client =
+    process.env.NODE_ENV === "dev"
+      ? new Client({
+          user: process.env.PGUSER,
+          host: process.env.PGHOST,
+          database: process.env.PGDATABASE,
+          port: process.env.PGPORT,
+        })
+      : new Client(process.env.DATABASE_URL);
   await client.connect().then(() => console.log("connected to database"));
   app.use(express.json());
   app.use(
