@@ -402,7 +402,7 @@ async function main() {
     }
   });
 
-  app.listen(port, () => {
+  app.listen(process.env.PORT || port, () => {
     console.log(`👂 on port ${process.env.PORT || port}`);
   });
 }
