@@ -7,6 +7,8 @@ const saltRounds = 10;
 const app = express();
 const port = 3000;
 const { Client } = require("pg");
+const compression = require("compression");
+const helmet = require("helmet");
 
 function generateAccessToken(accountId) {
   return jwt.sign(accountId, process.env.TOKEN_SECRET, { expiresIn: "1800s" });
@@ -43,6 +45,8 @@ async function main() {
         });
   await client.connect().then(() => console.log("connected to database"));
   app.use(express.json());
+  app.use(helmet());
+  app.use(compression());
   app.use(
     express.urlencoded({
       extended: true,
@@ -399,7 +403,7 @@ async function main() {
   });
 
   app.listen(port, () => {
-    console.log(`👂 on port ${port}`);
+    console.log(`👂 on port ${process.env.PORT || port}`);
   });
 }
 
